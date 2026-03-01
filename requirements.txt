@@ -1,0 +1,6 @@
+discord.py
+tinydb
+requests
+flask
+pytz
+six
