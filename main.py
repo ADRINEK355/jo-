@@ -5,31 +5,6 @@ import os
 import threading
 from threading import Thread
 
-# --- SEKCJA BOTA DISCORD ---
-# Wejdź na Discord Developer Portal, stwórz bota i wklej jego TOKEN poniżej
-TOKEN = 'MTQ2NjE1MzgxMDY5NDI0NjUxMw.GYmMwf.z6gMFFfRFO_SaTC_tQOoqx9v2wKlE818dZncWI' 
-
-import discord
-from discord.ext import commands
-
-# Konfiguracja bota
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-@bot.event
-async def on_ready():
-    print(f'🤖 BOT DISCORD ONLINE: {bot.user}')
-    await bot.change_presence(activity=discord.Game(name="Brawlix v2 | !status"))
-
-@bot.command()
-async def status(ctx):
-    # Pokazuje status serwera na Discordzie
-    await ctx.send(f"✅ **Serwer Brawlix v26 jest ONLINE!**\n👥 Aktywni gracze: {Server.ThreadCount}\n🏆 Admin Adix wbił właśnie kolejną 35 rangę!")
-
-@bot.command()
-async def news(ctx):
-    await ctx.send("📢 **NEWS:** 8 Marca wielki event: **Bazar Tary!** Nowe skiny dla Emz i Jessie!")
-
 # --- KLASA SERWERA BRAWL STARS ---
 class Server:
     Clients = {"ClientCounts": 0, "Clients": {}}
@@ -70,14 +45,13 @@ class ClientThread(Thread):
         super().__init__()
         self.client = client
         self.address = address
-        # Importy z Twoich plików Logic
         try:
             from Logic.Device import Device
             from Logic.Player import Players
             self.device = Device(self.client)
             self.player = Players(self.device)
         except ImportError:
-            print("[ERROR] Nie znaleziono folderu Logic (Device.py / Player.py)!")
+            print("[ERROR] Nie znaleziono folderu Logic!")
 
     def recvall(self, length: int):
         data = b''
@@ -89,7 +63,6 @@ class ClientThread(Thread):
         return data
 
     def run(self):
-        # Import bazy pakietów
         try:
             from Packets.LogicMessageFactory import packets
         except ImportError:
@@ -114,9 +87,7 @@ class ClientThread(Thread):
                     else:
                         print(f'[INFO] Pakiet nieznany: {packet_id}')
 
-                # Rozłączanie przy braku aktywności (10 sekund)
                 if time.time() - last_packet > 10:
-                    print(f"[INFO] IP {self.address[0]} rozłączone (timeout).")
                     self.client.close()
                     Server.ThreadCount -= 1
                     break
@@ -124,24 +95,11 @@ class ClientThread(Thread):
             self.client.close()
             Server.ThreadCount -= 1
 
-# --- URUCHAMIANIE WSZYSTKIEGO ---
+# --- URUCHAMIANIE ---
 if __name__ == '__main__':
-    # 1. Odpalamy serwer Brawl Stars w tle (osobny wątek)
-    bs_server = Server('0.0.0.0', 9339)
-    server_thread = threading.Thread(target=bs_server.start)
-    server_thread.daemon = True
-    server_thread.start()
-
-    # 2. Odpalamy bota Discord (to trzyma skrypt przy życiu)
-    if TOKEN != 'TUTAJ_WKLEJ_TWOJ_TOKEN_BOTA':
-        try:
-            bot.run(TOKEN)
-        except Exception as e:
-            print(f"❌ Błąd bota Discord: {e}")
-            # Jeśli bot nie działa, serwer i tak będzie działał dzięki tej pętli:
-            while True:
-                time.sleep(1)
-    else:
-        print("⚠️ Nie wkleiłeś TOKENU bota! Serwer BS działa, ale bot Discord jest wyłączony.")
-        while True:
-            time.sleep(1)
+    # Serwer rusza na porcie 9339 (lub takim, jaki przydzieli hosting)
+    # Na Renderze warto sprawdzić zmienną środowiskową PORT
+    port = int(os.environ.get("PORT", 9339))
+    bs_server = Server('0.0.0.0', port)
+    print(f"[SYSTEM] Startowanie na porcie: {port}")
+    bs_server.start()
